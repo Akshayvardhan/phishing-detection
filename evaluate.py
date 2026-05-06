@@ -13,33 +13,17 @@ from tensorflow.keras import layers
 from tensorflow.keras.preprocessing import sequence
 from keras.models import Sequential, Model, load_model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.layers.convolutional import Conv1D, MaxPooling1D
-from keras.layers.core import Dense, Dropout, Activation, Lambda, Flatten
+from keras.layers import Conv1D, MaxPooling1D
+from keras.layers import Dense, Dropout, Activation, Lambda, Flatten
 
 def create_scaler(df):
-    # apply standard scaler
-    html_len = df[['html_length']].values.astype(float)
-    n_hyperlinks = df[['n_hyperlinks']].values.astype(float)
-    n_script_tag = df[['n_script_tag']].values.astype(float)
-    n_link_tag = df[['n_link_tag']].values.astype(float)
-    n_comment_tag = df[['n_comment_tag']].values.astype(float)
-
+    # apply standard scaler to selected columns and add *_std versions
+    cols_to_scale = ['html_length', 'n_hyperlinks', 'n_script_tag', 'n_link_tag', 'n_comment_tag']
     scaler = StandardScaler()
-    html_len_scaled = scaler.fit_transform(html_len)
-    n_hyperlinks_scaled = scaler.fit_transform(n_hyperlinks)
-    n_script_tag_scaled = scaler.fit_transform(n_script_tag)
-    n_link_tag_scaled = scaler.fit_transform(n_link_tag)
-    n_comment_tag_scaled = scaler.fit_transform(n_comment_tag)
-
-    # remove column and add to data frame
-    df = pd.concat([df.drop(columns=['html_length','n_hyperlinks','n_script_tag','n_link_tag','n_comment_tag']),
-                    pd.DataFrame(html_len_scaled, columns=['html_length_std']),
-                    pd.DataFrame(n_hyperlinks_scaled, columns=['n_hyperlinks_std']),
-                    pd.DataFrame(n_script_tag_scaled, columns=['n_script_tag_std']),
-                    pd.DataFrame(n_link_tag_scaled, columns=['n_link_tag_std']),
-                    pd.DataFrame(n_comment_tag_scaled, columns=['n_comment_tag_std'])], axis=1, join='inner')
-
-    return df
+    df_scaled = df.copy()
+    df_scaled[[c + '_std' for c in cols_to_scale]] = scaler.fit_transform(df_scaled[cols_to_scale].astype(float))
+    df_scaled = df_scaled.drop(columns=cols_to_scale)
+    return df_scaled
 
 def create_X_1(temp_X_1):
     url_int_tokens = [[printable.index(x) + 1 for x in url if x in printable] for url in temp_X_1.url]

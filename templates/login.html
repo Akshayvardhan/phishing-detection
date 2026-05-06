@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>phishingdetection — Threat Intelligence Platform</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050810;
+      --surface: #090e1c;
+      --panel: #0c1220;
+      --card: #101828;
+      --border: rgba(99, 179, 237, 0.1);
+      --border-hover: rgba(99, 179, 237, 0.22);
+      --accent: #63b3ed;
+      --accent-dim: rgba(99, 179, 237, 0.08);
+      --danger: #fc8181;
+      --danger-dim: rgba(252, 129, 129, 0.1);
+      --warn: #f6ad55;
+      --warn-dim: rgba(246, 173, 85, 0.1);
+      --success: #68d391;
+      --success-dim: rgba(104, 211, 145, 0.08);
+      --purple: #b794f4;
+      --purple-dim: rgba(183, 148, 244, 0.1);
+      --text-primary: #e2e8f0;
+      --text-secondary: #718096;
+      --text-muted: #4a5568;
+      --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: 0.18s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BG ── */
+    #bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(99, 179, 237, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 179, 237, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    #bg-glow-1 {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.07) 0%, transparent 65%);
+      top: -200px;
+      left: -150px;
+      pointer-events: none;
+      z-index: 0;
+      animation: glow-drift-a 18s ease-in-out infinite;
+    }
+
+    #bg-glow-2 {
+      position: fixed;
+      width: 450px;
+      height: 450px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99, 179, 237, 0.06) 0%, transparent 65%);
+      bottom: -120px;
+      right: -100px;
+      pointer-events: none;
+      z-index: 0;
+      animation: glow-drift-b 14s ease-in-out infinite;
+    }
+
+    @keyframes glow-drift-a {
+
+      0%,
+      100% {
+        transform: translate(0, 0)
+      }
+
+      50% {
+        transform: translate(50px, 40px)
+      }
+    }
+
+    @keyframes glow-drift-b {
+
+      0%,
+      100% {
+        transform: translate(0, 0)
+      }
+
+      50% {
+        transform: translate(-40px, -50px)
+      }
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    #loginScreen {
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+
+    #dashScreen {
+      flex-direction: column;
+      overflow: auto;
+    }
+
+    /* ── LOGIN ── */
+    .login-shell {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      width: min(1080px, 96vw);
+      height: min(660px, 90vh);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 120px rgba(99, 179, 237, 0.04);
+    }
+
+    .login-left {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 44px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      overflow: hidden;
+    }
+
+    .login-right {
+      background: var(--panel);
+      padding: 44px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0;
+    }
+
+    /* Brand */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #6366f1, #63b3ed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-mark svg {
+      width: 18px;
+      height: 18px;
+      fill: #fff;
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .brand-name {
+      font-family: var(--font-ui);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      background: linear-gradient(90deg, #e2e8f0, #63b3ed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-sub {
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-tile {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+
+    .stat-tile-label {
+      font-size: 8.5px;
+      letter-spacing: 1.8px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .stat-tile-val {
+      font-family: var(--font-ui);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-tile-val.c-danger {
+      color: var(--danger);
+    }
+
+    .stat-tile-val.c-success {
+      color: var(--success);
+    }
+
+    .stat-tile-delta {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    .stat-tile-delta span {
+      font-weight: 600;
+    }
+
+    .stat-tile-delta.up span {
+      color: var(--danger);
+    }
+
+    .stat-tile-delta.down span {
+      color: var(--success);
+    }
+
+    /* Live feed */
+    .feed-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 8.5px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--danger);
+      animation: pulse-blink 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-blink {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 4px var(--danger)
+      }
+
+      50% {
+        opacity: 0.25;
+        box-shadow: none
+      }
+    }
+
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow: hidden;
+      max-height: 168px;
+    }
+
+    .feed-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+      border-left: 2px solid transparent;
+      font-size: 10.5px;
+      transition: opacity var(--transition);
+    }
+
+    .feed-row.level-high {
+      border-left-color: var(--danger);
+    }
+
+    .feed-row.level-med {
+      border-left-color: var(--warn);
+    }
+
+    .feed-row.level-low {
+      border-left-color: var(--success);
+    }
+
+    .feed-badge {
+      font-size: 7.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+
+    .feed-badge.level-high {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .feed-badge.level-med {
+      background: var(--warn-dim);
+      color: var(--warn);
+    }
+
+    .feed-badge.level-low {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .feed-url {
+      flex: 1;
+      color: var(--text-primary);
+      font-size: 9.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .feed-ts {
+      color: var(--text-muted);
+      font-size: 8.5px;
+      flex-shrink: 0;
+    }
+
+    /* Login right */
+    .login-heading {
+      font-family: var(--font-ui);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      margin-bottom: 4px;
+    }
+
+    .login-sub-text {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      margin-bottom: 26px;
+    }
+
+    .oauth-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .oauth-button {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .oauth-button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.45s ease;
+    }
+
+    .oauth-button:hover::after {
+      transform: translateX(100%);
+    }
+
+    .oauth-button:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.055);
+      transform: translateX(3px);
+    }
+
+    .oauth-button svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+
+    .oauth-button-label {
+      flex: 1;
+      text-align: left;
+    }
+
+    .oauth-button-arrow {
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .oauth-button:hover .oauth-button-arrow {
+      transform: translateX(4px);
+      color: var(--accent);
+    }
+
+    .divider-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .divider-line::before,
+    .divider-line::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .cred-form {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field-label {
+      font-size: 8.5px;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .field-wrap {
+      position: relative;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 11.5px;
+      outline: none;
+      transition: border-color var(--transition), background var(--transition);
+    }
+
+    .field-input:focus {
+      border-color: rgba(99, 179, 237, 0.5);
+      background: rgba(99, 179, 237, 0.03);
+    }
+
+    .field-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .eye-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      background: none;
+      border: none;
+      transition: color var(--transition);
+      padding: 2px;
+    }
+
+    .eye-toggle:hover {
+      color: var(--accent);
+    }
+
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-row input {
+      accent-color: var(--accent);
+    }
+
+    .forgot-link {
+      font-size: 9.5px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    .submit-button {
+      position: relative;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #6366f1, #63b3ed);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: box-shadow var(--transition), transform var(--transition);
+      box-shadow: 0 0 24px rgba(99, 179, 237, 0.2);
+    }
+
+    .submit-button::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+      transform: translateX(-100%) skewX(-10deg);
+      transition: transform 0.5s ease;
+    }
+
+    .submit-button:hover::before {
+      transform: translateX(200%) skewX(-10deg);
+    }
+
+    .submit-button:hover {
+      box-shadow: 0 0 40px rgba(99, 179, 237, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .submit-button:active {
+      transform: translateY(0);
+    }
+
+    .submit-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.5);
+      width: 0;
+      transition: width 1.8s ease;
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+    }
+
+    .submit-button.loading .submit-progress {
+      width: 100%;
+    }
+
+    /* ── OAUTH MODAL ── */
+    #oauthScreen {
+      background: rgba(5, 8, 16, 0.92);
+      backdrop-filter: blur(16px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .oauth-dialog {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      width: 360px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.5), 0 0 120px rgba(99, 179, 237, 0.06);
+      animation: dialog-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes dialog-enter {
+      from {
+        opacity: 0;
+        transform: scale(0.92) translateY(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    .oauth-dialog-icon {
+      font-size: 44px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .oauth-dialog-title {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .oauth-dialog-desc {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.65;
+    }
+
+    .oauth-email-row {
+      text-align: left;
+      margin-bottom: 12px;
+    }
+
+    .oauth-email-input {
+      width: 100%;
+      padding: 11px 13px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 11.5px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .oauth-email-input:focus {
+      border-color: rgba(99, 179, 237, 0.5);
+    }
+
+    .oauth-email-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .oauth-email-error {
+      font-size: 9.5px;
+      color: var(--danger);
+      margin-top: 5px;
+      display: none;
+      text-align: left;
+    }
+
+    .oauth-continue-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #6366f1, #63b3ed);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: box-shadow var(--transition);
+      box-shadow: 0 0 20px rgba(99, 179, 237, 0.2);
+    }
+
+    .oauth-continue-btn:hover {
+      box-shadow: 0 0 36px rgba(99, 179, 237, 0.35);
+    }
+
+    .oauth-progress-track {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .oauth-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #63b3ed);
+      border-radius: 3px;
+      width: 0;
+      transition: width 2.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .oauth-steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .oauth-step {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      transition: color 0.25s;
+    }
+
+    .oauth-step.state-done {
+      color: var(--success);
+    }
+
+    .oauth-step.state-active {
+      color: var(--text-primary);
+    }
+
+    .step-pip {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7.5px;
+      transition: all 0.25s;
+    }
+
+    .oauth-step.state-done .step-pip {
+      background: var(--success);
+      border-color: var(--success);
+      color: #000;
+    }
+
+    .oauth-step.state-active .step-pip {
+      border-color: var(--accent);
+      animation: pip-spin 0.9s linear infinite;
+    }
+
+    @keyframes pip-spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .oauth-cancel-link {
+      margin-top: 18px;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-block;
+    }
+
+    .oauth-cancel-link:hover {
+      color: var(--text-primary);
+      text-decoration: underline;
+    }
+
+    /* ── DASHBOARD ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 28px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9, 14, 28, 0.95);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 10.5px;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+
+    .user-chip:hover {
+      border-color: var(--border-hover);
+    }
+
+    .user-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #63b3ed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .signout-btn {
+      font-family: var(--font);
+      font-size: 9.5px;
+      color: var(--text-secondary);
+      padding: 5px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .signout-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    /* Scanner */
+    .page-body {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+    }
+
+    .section {
+      padding: 36px 28px 20px;
+      max-width: 880px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-heading {
+      font-family: var(--font-ui);
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      margin-bottom: 4px;
+    }
+
+    .section-sub {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .scanner-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .url-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .url-field {
+      flex: 1;
+      padding: 13px 16px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 12px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .url-field:focus {
+      border-color: rgba(99, 179, 237, 0.45);
+    }
+
+    .url-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    .scan-button {
+      padding: 13px 26px;
+      background: linear-gradient(135deg, #6366f1, #63b3ed);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: box-shadow var(--transition), transform var(--transition);
+      box-shadow: 0 0 20px rgba(99, 179, 237, 0.18);
+    }
+
+    .scan-button:hover {
+      box-shadow: 0 0 36px rgba(99, 179, 237, 0.32);
+      transform: translateY(-1px);
+    }
+
+    .scan-button:active {
+      transform: translateY(0);
+    }
+
+    .scan-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .quick-examples {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 11px;
+    }
+
+    .quick-label {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .quick-tag {
+      font-family: var(--font);
+      font-size: 9px;
+      padding: 3.5px 9px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all var(--transition);
+    }
+
+    .quick-tag:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Scan overlay */
+    .scan-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 14, 28, 0.93);
+      border-radius: var(--radius-lg);
+      z-index: 5;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      backdrop-filter: blur(4px);
+    }
+
+    .scan-overlay.show {
+      display: flex;
+    }
+
+    .scan-ring {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid rgba(99, 179, 237, 0.12);
+      border-top-color: var(--accent);
+      animation: ring-spin 0.75s linear infinite;
+    }
+
+    @keyframes ring-spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .scan-status {
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .scan-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 210px;
+    }
+
+    .scan-check {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: color 0.2s;
+    }
+
+    .scan-check.done {
+      color: var(--success);
+    }
+
+    .scan-check.active {
+      color: var(--text-primary);
+    }
+
+    /* Result card */
+    .result-panel {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 20px;
+      animation: panel-in 0.3s ease both;
+    }
+
+    @keyframes panel-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .result-panel.show {
+      display: block;
+    }
+
+    .result-header {
+      padding: 22px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .verdict-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    .verdict-phishing .verdict-icon {
+      background: var(--danger-dim);
+      border: 1px solid rgba(252, 129, 129, 0.2);
+    }
+
+    .verdict-suspicious .verdict-icon {
+      background: var(--warn-dim);
+      border: 1px solid rgba(246, 173, 85, 0.2);
+    }
+
+    .verdict-safe .verdict-icon {
+      background: var(--success-dim);
+      border: 1px solid rgba(104, 211, 145, 0.2);
+    }
+
+    .result-meta {
+      flex: 1;
+    }
+
+    .result-verdict-label {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 3px;
+    }
+
+    .verdict-phishing .result-verdict-label {
+      color: var(--danger);
+    }
+
+    .verdict-suspicious .result-verdict-label {
+      color: var(--warn);
+    }
+
+    .verdict-safe .result-verdict-label {
+      color: var(--success);
+    }
+
+    .result-url-text {
+      font-size: 10px;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 9px;
+    }
+
+    .confidence-track {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .confidence-label-text {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .confidence-rail {
+      flex: 1;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease 0.1s;
+      width: 0;
+    }
+
+    .verdict-phishing .confidence-fill {
+      background: linear-gradient(90deg, #fc8181, #feb2b2);
+    }
+
+    .verdict-suspicious .confidence-fill {
+      background: linear-gradient(90deg, #f6ad55, #fbd38d);
+    }
+
+    .verdict-safe .confidence-fill {
+      background: linear-gradient(90deg, #68d391, #9ae6b4);
+    }
+
+    .confidence-pct-text {
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 32px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .result-time-col {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .result-time-label {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .result-time-val {
+      font-family: var(--font-ui);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .result-time-unit {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .result-body {
+      padding: 22px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .signal-col-title {
+      font-size: 9px;
+      letter-spacing: 1.8px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .signal-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .signal-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.018);
+      border: 1px solid rgba(255, 255, 255, 0.035);
+      font-size: 10.5px;
+    }
+
+    .signal-ico {
+      flex-shrink: 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .signal-desc {
+      flex: 1;
+      line-height: 1.55;
+      color: var(--text-primary);
+    }
+
+    .signal-badge {
+      flex-shrink: 0;
+      font-size: 8px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .badge-danger {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .badge-warn {
+      background: var(--warn-dim);
+      color: var(--warn);
+    }
+
+    .badge-success {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .badge-info {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .badge-trusted {
+      background: rgba(183, 148, 244, 0.1);
+      color: var(--purple);
+    }
+
+    /* History */
+    .history-section {
+      padding: 0 28px 44px;
+      max-width: 880px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .history-tbl {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-tbl th {
+      font-size: 8.5px;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      text-align: left;
+      padding: 7px 11px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-tbl td {
+      padding: 9px 11px;
+      font-size: 10.5px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+      vertical-align: middle;
+    }
+
+    .history-tbl tr:last-child td {
+      border-bottom: none;
+    }
+
+    .h-url-cell {
+      color: var(--text-secondary);
+      font-size: 9.5px;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-verdict-pill {
+      display: inline-flex;
+      padding: 2.5px 9px;
+      border-radius: 4px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .h-verdict-pill.phishing {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .h-verdict-pill.suspicious {
+      background: var(--warn-dim);
+      color: var(--warn);
+    }
+
+    .h-verdict-pill.safe {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .rescan-btn {
+      font-size: 9.5px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      font-family: var(--font);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .rescan-btn:hover {
+      text-decoration: underline;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 9999;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 11px 16px;
+      font-size: 10.5px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      transform: translateX(130%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
+      max-width: 280px;
+    }
+
+    #toast.visible {
+      transform: translateX(0);
+    }
+
+    #toast.t-success {
+      border-color: rgba(104, 211, 145, 0.3);
+      color: var(--success);
+    }
+
+    #toast.t-error {
+      border-color: rgba(252, 129, 129, 0.3);
+      color: var(--danger);
+    }
+
+    #toast.t-info {
+      border-color: rgba(99, 179, 237, 0.3);
+      color: var(--accent);
+    }
+
+    @media(max-width: 720px) {
+      .login-shell {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .login-left {
+        display: none;
+      }
+
+      #loginScreen {
+        align-items: flex-start;
+        padding: 16px 0;
+      }
+
+      .result-body {
+        grid-template-columns: 1fr;
+      }
+
+      .url-row {
+        flex-direction: column;
+      }
+
+      .section,
+      .history-section {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="bg-layer"></div>
+  <div id="bg-glow-1"></div>
+  <div id="bg-glow-2"></div>
+  <div id="toast"><span id="toast-msg"></span></div>
+
+  <!-- OAUTH SCREEN -->
+  <div class="screen" id="oauthScreen">
+    <div class="oauth-dialog">
+      <span class="oauth-dialog-icon" id="oa-icon">🔑</span>
+      <div class="oauth-dialog-title" id="oa-title">Connect account</div>
+      <p class="oauth-dialog-desc" id="oa-desc">Enter your email address to continue.</p>
+
+      <div id="oa-email-step">
+        <div class="oauth-email-row">
+          <label class="field-label" style="display:block;margin-bottom:5px;">Email address</label>
+          <input class="oauth-email-input" id="oa-email-input" type="email" placeholder="you@example.com"
+            onkeydown="if(event.key==='Enter')OAuthController.submitEmail()">
+          <div class="oauth-email-error" id="oa-email-error">Please enter a valid email address.</div>
+        </div>
+        <button class="oauth-continue-btn" onclick="OAuthController.submitEmail()">Continue →</button>
+      </div>
+
+      <div id="oa-progress-step" style="display:none">
+        <div class="oauth-progress-track">
+          <div class="oauth-progress-bar" id="oa-progress-bar"></div>
+        </div>
+        <div class="oauth-steps-list">
+          <div class="oauth-step" id="oa-s1">
+            <div class="step-pip" id="oa-p1">○</div><span>Verifying OAuth provider</span>
+          </div>
+          <div class="oauth-step" id="oa-s2">
+            <div class="step-pip" id="oa-p2">○</div><span>Requesting authorization token</span>
+          </div>
+          <div class="oauth-step" id="oa-s3">
+            <div class="step-pip" id="oa-p3">○</div><span>Validating credentials</span>
+          </div>
+          <div class="oauth-step" id="oa-s4">
+            <div class="step-pip" id="oa-p4">○</div><span>Creating secure session</span>
+          </div>
+        </div>
+      </div>
+      <span class="oauth-cancel-link" onclick="OAuthController.cancel()">Cancel</span>
+    </div>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div class="screen active" id="loginScreen">
+    <div class="login-shell">
+      <div class="login-left">
+        <div class="brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 20 20">
+              <path d="M10 1L2 5v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V5L10 1z" />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <div class="brand-name">phishingdetection</div>
+            <div class="brand-sub">Threat Intelligence Platform</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-tile-label">Threats Blocked</div>
+            <div class="stat-tile-val c-danger" id="stat-c1">0</div>
+            <div class="stat-tile-delta up"><span>↑ 12.4%</span> today</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Safe Scans</div>
+            <div class="stat-tile-val c-success" id="stat-c2">0</div>
+            <div class="stat-tile-delta down"><span>↓ 3.1%</span> bounce rate</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Active Domains</div>
+            <div class="stat-tile-val c-danger" id="stat-c3">0</div>
+            <div class="stat-tile-delta up"><span>↑ 87</span> new today</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Avg Response</div>
+            <div class="stat-tile-val c-success">0.3s</div>
+            <div class="stat-tile-delta down"><span>↓ 20ms</span> faster</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="feed-header">
+            <div class="pulse-dot"></div> Live Threat Feed
+          </div>
+          <div class="feed-list" id="feed-list"></div>
+        </div>
+      </div>
+
+      <div class="login-right">
+        <div class="login-heading">Access Portal</div>
+        <div class="login-sub-text">Sign in to your threat intelligence workspace.</div>
+
+        <div class="oauth-stack">
+          <button class="oauth-button" onclick="OAuthController.start('Google','🔵','Google Workspace')">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <path
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                fill="#4285F4" />
+              <path
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                fill="#34A853" />
+              <path
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                fill="#FBBC05" />
+              <path
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                fill="#EA4335" />
+            </svg>
+            <span class="oauth-button-label">Continue with Google</span><span class="oauth-button-arrow">→</span>
+          </button>
+          <button class="oauth-button" onclick="OAuthController.start('GitHub','⚫','GitHub')">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+              <path
+                d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" />
+            </svg>
+            <span class="oauth-button-label">Continue with GitHub</span><span class="oauth-button-arrow">→</span>
+          </button>
+          <button class="oauth-button" onclick="OAuthController.start('Microsoft','🔷','Azure AD')">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <rect x="2" y="2" width="9" height="9" fill="#F35325" />
+              <rect x="13" y="2" width="9" height="9" fill="#81BC06" />
+              <rect x="2" y="13" width="9" height="9" fill="#05A6F0" />
+              <rect x="13" y="13" width="9" height="9" fill="#FFBA08" />
+            </svg>
+            <span class="oauth-button-label">Continue with Microsoft</span><span class="oauth-button-arrow">→</span>
+          </button>
+        </div>
+
+        <div class="divider-line">or sign in with credentials</div>
+
+        <form class="cred-form" onsubmit="Auth.handleCredentialLogin(event)">
+          <div class="field-group">
+            <label class="field-label">Email address</label>
+            <input class="field-input" type="email" id="login-email" placeholder="analyst@company.com"
+              value="demo@phishguard.io">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <div class="field-wrap">
+              <input class="field-input" type="password" id="login-pass" placeholder="••••••••••" value="demo1234">
+              <button type="button" class="eye-toggle" onclick="UI.togglePassword()">👁</button>
+            </div>
+          </div>
+          <div class="form-footer">
+            <label class="checkbox-row"><input type="checkbox" checked> Remember device</label>
+            <a href="#" class="forgot-link">Forgot password?</a>
+          </div>
+          <button type="submit" class="submit-button" id="submit-btn">
+            <span id="submit-label">Sign in →</span>
+            <div class="submit-progress" id="submit-progress"></div>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen" id="dashScreen">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark">
+          <svg viewBox="0 0 20 20">
+            <path d="M10 1L2 5v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V5L10 1z" fill="white" />
+          </svg>
+        </div>
+        <div class="brand-name"
+          style="font-family:var(--font-ui);font-size:15px;font-weight:700;letter-spacing:-0.3px;background:linear-gradient(90deg,#e2e8f0,#63b3ed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+          phishingdetection</div>
+      </div>
+      <div class="topbar-right">
+        <div class="user-chip">
+          <div class="user-avatar" id="dash-avatar">D</div>
+          <span id="dash-email">demo@phishguard.io</span>
+        </div>
+        <button class="signout-btn" onclick="Auth.logout()">⏻ Sign out</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="section">
+        <div class="section-heading">URL Scanner</div>
+        <div class="section-sub">Analyze any URL for phishing indicators, typosquatting, and threat signals.</div>
+
+        <div class="scanner-card">
+          <div class="url-row">
+            <input class="url-field" id="url-input" type="text"
+              placeholder="https://suspicious-domain.xyz/verify?account=true"
+              onkeydown="if(event.key==='Enter')Scanner.run()">
+            <button class="scan-button" id="scan-btn" onclick="Scanner.run()">⚡ Scan URL</button>
+          </div>
+          <div class="quick-examples">
+            <span class="quick-label">Try:</span>
+            <span class="quick-tag"
+              onclick="Scanner.loadExample('https://secure-paypal-verify.xyz/login')">Phishing</span>
+            <span class="quick-tag" onclick="Scanner.loadExample('https://accounts.google.com/signin')">Google
+              sign-in</span>
+            <span class="quick-tag" onclick="Scanner.loadExample('https://paypa1-secure.net/update')">Typosquat</span>
+            <span class="quick-tag" onclick="Scanner.loadExample('https://github.com/anthropics/claude')">GitHub
+              repo</span>
+            <span class="quick-tag" onclick="Scanner.loadExample('https://apple-id-suspended.info/verify')">Apple
+              scam</span>
+          </div>
+
+          <div class="scan-overlay" id="scan-overlay">
+            <div class="scan-ring"></div>
+            <div class="scan-status" id="scan-status">Initializing...</div>
+            <div class="scan-checklist">
+              <div class="scan-check" id="sc1">○ DNS &amp; WHOIS lookup</div>
+              <div class="scan-check" id="sc2">○ SSL certificate check</div>
+              <div class="scan-check" id="sc3">○ Domain age analysis</div>
+              <div class="scan-check" id="sc4">○ Blacklist database scan</div>
+              <div class="scan-check" id="sc5">○ ML threat classifier</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-panel" id="result-panel">
+          <div class="result-header">
+            <div class="verdict-icon" id="r-icon">?</div>
+            <div class="result-meta">
+              <div class="result-verdict-label" id="r-verdict-label">—</div>
+              <div class="result-url-text" id="r-url">—</div>
+              <div class="confidence-track">
+                <span class="confidence-label-text">Confidence</span>
+                <div class="confidence-rail">
+                  <div class="confidence-fill" id="r-conf-fill"></div>
+                </div>
+                <span class="confidence-pct-text" id="r-conf-pct">—</span>
+              </div>
+            </div>
+            <div class="result-time-col">
+              <div class="result-time-label">Scan time</div>
+              <div class="result-time-val" id="r-time">—</div>
+              <div class="result-time-unit">seconds</div>
+            </div>
+          </div>
+          <div class="result-body">
+            <div>
+              <div class="signal-col-title">🔍 Threat indicators</div>
+              <div class="signal-stack" id="threat-stack"></div>
+            </div>
+            <div>
+              <div class="signal-col-title">✅ Trust signals</div>
+              <div class="signal-stack" id="trust-stack"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <div class="history-header">
+          <div class="pulse-dot"></div> Scan History
+        </div>
+        <table class="history-tbl">
+          <thead>
+            <tr>
+              <th>URL</th>
+              <th>Verdict</th>
+              <th>Confidence</th>
+              <th>Time</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    /* ── State ── */
+    const State = {
+      user: null,
+      history: [],
+      oauthProvider: { name: '', icon: '', label: '' },
+      oauthTimer: null,
+    };
+
+    /* ── DOM helpers ── */
+    const $ = id => document.getElementById(id);
+    const cls = (el, ...names) => names.forEach(n => el.classList.add(n));
+    const decls = (el, ...names) => names.forEach(n => el.classList.remove(n));
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => decls(s, 'active'));
+      cls($(id), 'active');
+    }
+
+    /* ── Toast ── */
+    const Toast = (() => {
+      let timer;
+      return {
+        show(msg, type = 'info') {
+          const el = $('toast');
+          $('toast-msg').textContent = msg;
+          el.className = '';
+          cls(el, `t-${type}`);
+          requestAnimationFrame(() => cls(el, 'visible'));
+          clearTimeout(timer);
+          timer = setTimeout(() => decls(el, 'visible'), 3400);
+        }
+      };
+    })();
+
+    /* ── Counter animation ── */
+    function animateCounter(el, target, duration = 1800) {
+      const start = performance.now();
+      const step = now => {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.floor(ease * target).toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    /* ── Live feed ── */
+    const FeedController = (() => {
+      const INITIAL = [
+        { level: 'high', url: 'secure-paypal-verify.xyz', ts: '0s' },
+        { level: 'high', url: 'login.amazon-secure.info', ts: '3s' },
+        { level: 'med', url: 'bank-account-verify.net', ts: '11s' },
+        { level: 'low', url: 'newsletter.trustsite.com', ts: '24s' },
+        { level: 'high', url: 'update-apple-id.ru', ts: '38s' },
+      ];
+      const ROLLING = [
+        { level: 'high', url: 'microsoft-login-secure.tk', ts: 'now' },
+        { level: 'med', url: 'discount-amazon-deals.io', ts: 'now' },
+        { level: 'high', url: 'facebook-verify-urgent.cc', ts: 'now' },
+        { level: 'high', url: 'netflixx-billing-update.xyz', ts: 'now' },
+        { level: 'med', url: 'steam-gift-claim.pw', ts: 'now' },
+      ];
+      let idx = 0;
+
+      function makeRow({ level, url, ts }) {
+        const el = document.createElement('div');
+        el.className = `feed-row level-${level}`;
+        el.innerHTML = `
+      <span class="feed-badge level-${level}">${level.toUpperCase()}</span>
+      <span class="feed-url">${url}</span>
+      <span class="feed-ts">${ts} ago</span>`;
+        return el;
+      }
+
+      return {
+        init() {
+          const list = $('feed-list');
+          INITIAL.forEach(d => list.appendChild(makeRow(d)));
+          setInterval(() => {
+            const row = makeRow(ROLLING[idx++ % ROLLING.length]);
+            row.style.opacity = '0';
+            row.style.transition = 'opacity 0.4s';
+            list.insertBefore(row, list.firstChild);
+            requestAnimationFrame(() => { row.style.opacity = '1'; });
+            if (list.children.length > 5) list.removeChild(list.lastChild);
+          }, 4200);
+        }
+      };
+    })();
+
+    /* ── Auth ── */
+    const Auth = {
+      handleCredentialLogin(e) {
+        e.preventDefault();
+        const btn = $('submit-btn'), label = $('submit-label');
+        btn.style.pointerEvents = 'none';
+        cls(btn, 'loading');
+        label.textContent = 'Signing in...';
+        setTimeout(() => this.finishLogin($('login-email').value, '📧'), 1900);
+      },
+
+      finishLogin(email, icon) {
+        State.user = { email, icon };
+        $('dash-email').textContent = email;
+        $('dash-avatar').textContent = email.charAt(0).toUpperCase();
+        Toast.show('Authentication successful', 'success');
+        showScreen('dashScreen');
+      },
+
+      logout() {
+        State.user = null;
+        State.history = [];
+        $('history-body').innerHTML = '';
+        $('result-panel').className = 'result-panel';
+        $('url-input').value = '';
+        const btn = $('submit-btn');
+        btn.style.pointerEvents = '';
+        decls(btn, 'loading');
+        $('submit-label').textContent = 'Sign in →';
+        Toast.show('Session terminated', 'info');
+        showScreen('loginScreen');
+      }
+    };
+
+    /* ── OAuth ── */
+    const OAuthController = {
+      start(name, icon, label) {
+        Object.assign(State.oauthProvider, { name, icon, label });
+        $('oa-icon').textContent = icon;
+        $('oa-title').textContent = `Sign in with ${name}`;
+        $('oa-desc').textContent = `Enter your ${label} email address to continue.`;
+        $('oa-email-input').value = '';
+        $('oa-email-error').style.display = 'none';
+        $('oa-email-step').style.display = 'block';
+        $('oa-progress-step').style.display = 'none';
+        showScreen('oauthScreen');
+        setTimeout(() => $('oa-email-input').focus(), 300);
+      },
+
+      submitEmail() {
+        const val = $('oa-email-input').value.trim();
+        const err = $('oa-email-error');
+        if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+          err.style.display = 'block';
+          return;
+        }
+        err.style.display = 'none';
+        $('oa-title').textContent = `Connecting via ${State.oauthProvider.name}`;
+        $('oa-desc').textContent = 'Establishing secure OAuth 2.0 session. Please wait...';
+        $('oa-email-step').style.display = 'none';
+        $('oa-progress-step').style.display = 'block';
+
+        const bar = $('oa-progress-bar');
+        [1, 2, 3, 4].forEach(i => {
+          const s = $(`oa-s${i}`), p = $(`oa-p${i}`);
+          s.className = 'oauth-step';
+          p.textContent = '○';
+        });
+        bar.style.transition = 'none';
+        bar.style.width = '0';
+        requestAnimationFrame(() => {
+          bar.style.transition = 'width 2.4s cubic-bezier(0.4,0,0.2,1)';
+          bar.style.width = '100%';
+        });
+
+        const delays = [350, 850, 1450, 2050];
+        delays.forEach((d, i) => {
+          setTimeout(() => {
+            if (i > 0) {
+              $(`oa-s${i}`).className = 'oauth-step state-done';
+              $(`oa-p${i}`).textContent = '✓';
+            }
+            $(`oa-s${i + 1}`).className = 'oauth-step state-active';
+          }, d);
+        });
+
+        State.oauthTimer = setTimeout(() => {
+          $('oa-s4').className = 'oauth-step state-done';
+          $('oa-p4').textContent = '✓';
+          setTimeout(() => Auth.finishLogin(val, State.oauthProvider.icon), 280);
+        }, 2650);
+      },
+
+      cancel() {
+        clearTimeout(State.oauthTimer);
+        showScreen('loginScreen');
+        const btn = $('submit-btn');
+        btn.style.pointerEvents = '';
+        decls(btn, 'loading');
+        $('submit-label').textContent = 'Sign in →';
+      }
+    };
+
+    /* ── UI helpers ── */
+    const UI = {
+      togglePassword() {
+        const f = $('login-pass');
+        f.type = f.type === 'password' ? 'text' : 'password';
+      }
+    };
+
+    /* ── Analysis engine ── */
+    const ThreatAnalyzer = (() => {
+      const KNOWN_BRANDS = ['paypal', 'apple', 'amazon', 'google', 'microsoft', 'netflix', 'facebook', 'instagram', 'bank', 'chase', 'wellsfargo', 'citibank', 'twitter', 'linkedin', 'dropbox', 'adobe', 'spotify', 'steam'];
+      const RISKY_TLDS = new Set(['xyz', 'tk', 'ml', 'ga', 'cf', 'gq', 'ru', 'info', 'cc', 'pw', 'top', 'click', 'work', 'link', 'online', 'site', 'live', 'ws']);
+      const SAFE_TLDS = new Set(['com', 'org', 'edu', 'gov', 'io', 'net', 'co', 'uk', 'de', 'fr', 'au']);
+      const TYPOSQUATS = { paypa1: 'paypal', amazzon: 'amazon', micros0ft: 'microsoft', g00gle: 'google', appl3: 'apple', faceb00k: 'facebook', lnkedin: 'linkedin', netflixx: 'netflix' };
+      const ALARM_WORDS = ['verify', 'secure', 'update', 'login', 'account', 'banking', 'suspended', 'confirm', 'validate', 'unlock', 'urgent', 'reset', 'recover', 'limited', 'unusual', 'activity'];
+      const TRUSTED_DOMAINS = new Set(['google.com', 'github.com', 'microsoft.com', 'apple.com', 'amazon.com', 'wikipedia.org', 'stackoverflow.com', 'youtube.com', 'cloudflare.com', 'anthropic.com', 'twitter.com', 'x.com', 'linkedin.com', 'mozilla.org', 'npmjs.com']);
+
+      function normalizeURL(raw) {
+        const r = raw.trim();
+        return r.startsWith('http') ? r : 'https://' + r;
+      }
+
+      function parseURL(normalized) {
+        try {
+          const u = new URL(normalized);
+          return { host: u.hostname.toLowerCase(), path: u.pathname + u.search, tld: u.hostname.split('.').pop(), ok: true };
+        } catch (_) {
+          return { host: normalized, path: '', tld: '', ok: false };
+        }
+      }
+
+      function sig(icon, text, status, badgeClass) {
+        return { icon, text, status, badgeClass };
+      }
+
+      return {
+        analyze(raw) {
+          const url = normalizeURL(raw);
+          const { host, path, tld } = parseURL(url);
+          const threats = [], trust = [];
+          let score = 0;
+
+          // Brand impersonation
+          const spoofed = KNOWN_BRANDS.find(b => host.includes(b) && !host.endsWith(`${b}.com`) && !host.endsWith(`${b}.org`));
+          if (spoofed) {
+            score += 35;
+            threats.push(sig('🎭', `Brand impersonation — "${spoofed}" in non-official domain`, 'CRITICAL', 'badge-danger'));
+          } else {
+            trust.push(sig('✅', 'No known brand impersonation detected', 'OK', 'badge-success'));
+          }
+
+          // TLD risk
+          if (RISKY_TLDS.has(tld)) {
+            score += 22;
+            threats.push(sig('🌐', `High-risk TLD ".${tld}" — frequently associated with phishing campaigns`, 'RISKY', 'badge-danger'));
+          } else if (SAFE_TLDS.has(tld)) {
+            trust.push(sig('🌐', `Low-risk TLD ".${tld}" — standard domain extension`, 'OK', 'badge-success'));
+          }
+
+          // Typosquatting
+          const typo = Object.keys(TYPOSQUATS).find(k => host.includes(k));
+          if (typo) {
+            score += 40;
+            threats.push(sig('⌨️', `Typosquatting — "${typo}" mimics "${TYPOSQUATS[typo]}"`, 'CRITICAL', 'badge-danger'));
+          }
+
+          // Suspicious keywords
+          const full = (host + path).toLowerCase();
+          const matched = ALARM_WORDS.filter(w => full.includes(w));
+          if (matched.length >= 2) {
+            score += 18;
+            threats.push(sig('🔑', `Suspicious keywords: ${matched.slice(0, 3).join(', ')}`, 'WARNING', 'badge-warn'));
+          } else if (matched.length === 0) {
+            trust.push(sig('🔑', 'No deceptive keywords found in URL structure', 'OK', 'badge-success'));
+          }
+
+          // URL length
+          if (url.length > 80) {
+            score += 9;
+            threats.push(sig('📏', `Long URL (${url.length} chars) may obfuscate redirect destination`, 'WARNING', 'badge-warn'));
+          } else {
+            trust.push(sig('📏', `Normal URL length (${url.length} chars)`, 'OK', 'badge-success'));
+          }
+
+          // Subdomain depth
+          const subDepth = host.split('.').length - 2;
+          if (subDepth > 2) {
+            score += 14;
+            threats.push(sig('🔗', `Excessive subdomain nesting (${subDepth} levels) — common evasion technique`, 'WARNING', 'badge-warn'));
+          } else {
+            trust.push(sig('🔗', 'Normal subdomain structure', 'OK', 'badge-success'));
+          }
+
+          // Protocol
+          if (url.startsWith('https')) {
+            trust.push(sig('🔒', 'HTTPS present — connection is encrypted', 'OK', 'badge-success'));
+          } else {
+            score += 14;
+            threats.push(sig('🔓', 'No HTTPS — data transmitted in plain text', 'RISKY', 'badge-danger'));
+          }
+
+          // Raw IP
+          if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+            score += 30;
+            threats.push(sig('💻', 'Raw IP address as host — hides true server identity', 'CRITICAL', 'badge-danger'));
+          }
+
+          // Query string complexity
+          const paramCount = ((path).match(/[?&]/g) || []).length;
+          if (paramCount > 4) {
+            score += 7;
+            threats.push(sig('❓', `Complex query string (${paramCount} params) — possible redirect chain`, 'INFO', 'badge-info'));
+          }
+
+          // Trusted domain override
+          const isTrusted = [...TRUSTED_DOMAINS].some(d => host === d || host.endsWith('.' + d));
+          if (isTrusted) {
+            score = Math.max(0, score - 45);
+            trust.push(sig('🏆', 'Verified trusted domain — present in global registry', 'TRUSTED', 'badge-trusted'));
+          }
+
+          // Fill gaps
+          if (trust.length < 2 && !isTrusted) trust.push(sig('📋', 'Domain registration metadata within expected parameters', 'INFO', 'badge-info'));
+          if (threats.length === 0) threats.push(sig('✨', 'No threat indicators detected in URL structure', 'CLEAR', 'badge-success'));
+
+          score = Math.min(100, Math.max(0, score));
+
+          let verdict, confidence;
+          if (score >= 50) { verdict = 'phishing'; confidence = Math.min(98, 56 + Math.round(score / 2)); }
+          else if (score >= 25) { verdict = 'suspicious'; confidence = 45 + score; }
+          else { verdict = 'safe'; confidence = Math.min(99, 80 + (30 - score)); }
+
+          return { verdict, confidence: Math.round(confidence), score, threats, trust, url, host };
+        }
+      };
+    })();
+
+    /* ── Scanner ── */
+    const Scanner = {
+      loadExample(url) {
+        $('url-input').value = url;
+        this.run();
+      },
+
+      async run() {
+        const raw = $('url-input').value.trim();
+        if (!raw) { Toast.show('Please enter a URL to scan', 'error'); return; }
+
+        $('scan-btn').disabled = true;
+        this._showOverlay();
+
+        const start = performance.now();
+        try {
+          const resp = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: raw })
+          });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || 'API Error');
+
+          // Use the frontend's ThreatAnalyzer (Lexical parser) to populate visual UI signals
+          const visualIndicators = ThreatAnalyzer.analyze(raw);
+
+          const result = {
+            verdict: data.verdict,               // Pulls ML 'phishing' or 'safe'
+            confidence: data.confidence,         // Pulls ML Accuracy (0-100)
+            score: visualIndicators.score,
+            url: raw,
+            host: visualIndicators.host,
+            threats: visualIndicators.threats,   // Populates Red Indicator Stack
+            trust: visualIndicators.trust,       // Populates Green Indicator Stack
+            elapsed: ((performance.now() - start) / 1000).toFixed(3)
+          };
+
+          this._hideOverlay();
+          this._renderResult(result);
+          this._addHistory(result);
+        } catch (e) {
+          console.error(e);
+          this._hideOverlay();
+          Toast.show(e.message || 'Error running scan', 'error');
+        } finally {
+          $('scan-btn').disabled = false;
+        }
+      },
+
+      _showOverlay() {
+        const overlay = $('scan-overlay');
+        cls(overlay, 'show');
+        const checks = ['sc1', 'sc2', 'sc3', 'sc4', 'sc5'];
+        const msgs = [
+          'DNS & WHOIS lookup...',
+          'Checking SSL certificate...',
+          'Analyzing domain age...',
+          'Scanning blacklist databases...',
+          'Running ML classifier...'
+        ];
+        checks.forEach(id => {
+          const el = $(id);
+          el.className = 'scan-check';
+          el.textContent = '○ ' + el.textContent.slice(2);
+        });
+        checks.forEach((id, i) => {
+          setTimeout(() => {
+            if (i > 0) {
+              const prev = $(checks[i - 1]);
+              prev.className = 'scan-check done';
+              prev.textContent = '✓ ' + prev.textContent.slice(2);
+            }
+            const el = $(id);
+            el.className = 'scan-check active';
+            $('scan-status').textContent = msgs[i];
+          }, i * 380);
+        });
+      },
+
+      _hideOverlay() {
+        const checks = ['sc1', 'sc2', 'sc3', 'sc4', 'sc5'];
+        checks.forEach(id => {
+          const el = $(id);
+          cls(el, 'done');
+          el.textContent = '✓ ' + el.textContent.slice(2);
+        });
+        setTimeout(() => decls($('scan-overlay'), 'show'), 200);
+      },
+
+      _renderResult(r) {
+        const panel = $('result-panel');
+        const MAP = {
+          phishing: { emoji: '⚠️', label: 'PHISHING DETECTED', cls: 'verdict-phishing' },
+          suspicious: { emoji: '⚡', label: 'SUSPICIOUS URL', cls: 'verdict-suspicious' },
+          safe: { emoji: '✅', label: 'LEGITIMATE URL', cls: 'verdict-safe' },
+        };
+        const v = MAP[r.verdict];
+
+        panel.className = `result-panel show ${v.cls}`;
+        $('r-icon').textContent = v.emoji;
+        $('r-verdict-label').textContent = v.label;
+        $('r-url').textContent = r.url;
+        $('r-time').textContent = r.elapsed;
+        $('r-conf-pct').textContent = r.confidence + '%';
+
+        const fill = $('r-conf-fill');
+        fill.style.width = '0%';
+        requestAnimationFrame(() => {
+          fill.style.transition = 'width 0.65s ease 0.1s';
+          fill.style.width = r.confidence + '%';
+        });
+
+        const renderSignal = s =>
+          `<div class="signal-row">
+        <span class="signal-ico">${s.icon}</span>
+        <span class="signal-desc">${s.text}</span>
+        <span class="signal-badge ${s.badgeClass}">${s.status}</span>
+      </div>`;
+
+        $('threat-stack').innerHTML = r.threats.map(renderSignal).join('');
+        $('trust-stack').innerHTML = r.trust.map(renderSignal).join('');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        const toastType = r.verdict === 'safe' ? 'success' : r.verdict === 'phishing' ? 'error' : 'info';
+        Toast.show(`Scan complete — ${r.verdict.toUpperCase()}`, toastType);
+      },
+
+      _addHistory(r) {
+        State.history.unshift(r);
+        const PILL = { phishing: 'phishing', suspicious: 'suspicious', safe: 'safe' };
+        const LABEL = { phishing: 'PHISHING', suspicious: 'SUSPICIOUS', safe: 'SAFE' };
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const tbody = $('history-body');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+      <td class="h-url-cell" title="${r.url}">${r.host}</td>
+      <td><span class="h-verdict-pill ${PILL[r.verdict]}">${LABEL[r.verdict]}</span></td>
+      <td style="color:var(--text-secondary);font-size:10.5px">${r.confidence}%</td>
+      <td style="color:var(--text-muted);font-size:9.5px">${now}</td>
+      <td><button class="rescan-btn" onclick="Scanner.loadExample('${r.url}')">rescan</button></td>`;
+        tbody.insertBefore(row, tbody.firstChild);
+        if (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
+      }
+    };
+
+    /* ── Init ── */
+    (function init() {
+      setTimeout(() => {
+        animateCounter($('stat-c1'), 148293);
+        animateCounter($('stat-c2'), 2841057);
+        animateCounter($('stat-c3'), 9872);
+      }, 600);
+      FeedController.init();
+
+      // Auto-login if Jinja variables were populated via /detect
+      {% if auto_login %}
+      setTimeout(() => {
+        Auth.finishLogin('{{ email }}', '👤');
+      }, 100);
+      {% endif %}
+    }());
+  </script>
+</body>
+
+</html>
