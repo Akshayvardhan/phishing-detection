@@ -33,12 +33,13 @@ google = oauth.register(
 )
 
 
-# Load training data and model once at startup
-legitimate_train = pd.read_csv("features/legitimate_train.csv")
-phish_train = pd.read_csv("features/phish_train.csv")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+legitimate_train = pd.read_csv(os.path.join(BASE_DIR, "features", "legitimate_train.csv"))
+phish_train = pd.read_csv(os.path.join(BASE_DIR, "features", "phish_train.csv"))
 BASE_DF = pd.concat([legitimate_train, phish_train], axis=0).reset_index(drop=True)
 
-MODEL = load_model("models/model_C.h5")
+MODEL = load_model(os.path.join(BASE_DIR, "models", "model_C.h5"))
+
 
 # disable insecure HTTPS warnings (demo only)
 warnings.simplefilter("ignore", InsecureRequestWarning)
